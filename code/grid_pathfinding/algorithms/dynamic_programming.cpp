@@ -11,30 +11,24 @@
  *   - Enunciado Tarea 2 — INF-221: Algoritmos y Complejidad (2026-2), §3.2.
  *
  * Decisiones de diseño:
- *   - Formulación bottom-up con estado (i, j, v), donde lv = v - 1 en [0, V - 1]
- *     representa las vidas restantes tras ingresar a la celda (i, j).
- *   - Tablas aplanadas 1D contiguas en memoria con indexación std::size_t:
- *       idx(i, j, lv) = (i * M + j) * V + lv
- *     para maximizar localidad espacial en caché L1/L2 y evitar sobrecarga de
- *     vectores anidados (~54 MiB para 1024x2048 con V = 3).
+ *   - Formulación bottom-up con estado (i, j, lv), donde lv = vidas - 1 en
+ *     [0, v - 1] representa las vidas restantes tras ingresar a la celda (i, j).
+ *   - Tablas aplanadas 1D en std::vector con indexación (i * m + j) * v + lv
+ *     para mantener localidad de caché y eficiencia en grillas grandes.
  *   - Uso de NEG_INF = LLONG_MIN / 4 para distinguir estados inalcanzables de
- *     puntajes óptimos negativos sin riesgo de underflow aritmético.
- *   - Tabla compacta de predecesores parent (uint8_t: 0=ninguno, 1=izquierda 'R',
- *     2=arriba 'D') que permite reconstruir el camino óptimo en O(N + M).
+ *     puntajes óptimos negativos sin riesgo de underflow.
+ *   - Tabla de predecesores parent (0 = ninguno, 1 = desde izquierda 'R',
+ *     2 = desde arriba 'D') que reconstruye el camino óptimo y las vidas
+ *     restantes en O(N + M).
  *   - En celdas mina (t == -1) se ignora estrictamente values[i][j] y se
- *     transiciona desde src_lv = lv + 1 con penalización -static_cast<long long>(p).
- *   - En (N - 1, M - 1) se elige el máximo puntaje entre todos los lv alcanzables,
- *     priorizando mayor cantidad de vidas restantes ante empates exactos.
+ *     transiciona desde lv + 1 con penalización -p.
  * ============================================================================
  */
 
 #include "path_result.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <limits>
 #include <string>
-#include <utility>
 #include <vector>
 
 PathResult solveDP(int n, int m, int v, int p,
@@ -50,8 +44,8 @@ PathResult solveDP(int n, int m, int v, int p,
         return {false, 0, "", 0};
     }
 
-    const int start_type = types[0][0];
-    const int end_type = types[n - 1][m - 1];
+    int start_type = types[0][0];
+    int end_type = types[n - 1][m - 1];
     if (start_type == 0 || end_type == 0) {
         return {false, 0, "", 0};
     }
@@ -62,60 +56,53 @@ PathResult solveDP(int n, int m, int v, int p,
         return {false, 0, "", 0};
     }
 
-    const std::size_t N = static_cast<std::size_t>(n);
-    const std::size_t M = static_cast<std::size_t>(m);
-    const std::size_t V = static_cast<std::size_t>(v);
-    const std::size_t row_stride = M * V;
-    const std::size_t total_states = N * row_stride;
+    int row_stride = m * v;
+    int total_states = n * row_stride;
 
-    constexpr long long NEG_INF = std::numeric_limits<long long>::min() / 4;
-    const long long penalty = -static_cast<long long>(p);
+    const long long NEG_INF = std::numeric_limits<long long>::min() / 4;
+    long long penalty = -static_cast<long long>(p);
 
     std::vector<long long> dp(total_states, NEG_INF);
     // 0 = sin predecesor, 1 = desde izquierda ('R'), 2 = desde arriba ('D')
-    std::vector<std::uint8_t> parent(total_states, 0);
+    std::vector<char> parent(total_states, 0);
 
     // Caso base en (0, 0)
     if (start_type == 1) {
-        dp[V - 1] = values[0][0];
+        dp[v - 1] = values[0][0];
     } else {
-        dp[V - 2] = penalty;
+        dp[v - 2] = penalty;
     }
 
     // Llenado bottom-up fila por fila, columna por columna
-    for (int i = 0; i < n; ++i) {
-        const int* t_row = types[static_cast<std::size_t>(i)].data();
-        const long long* v_row = values[static_cast<std::size_t>(i)].data();
-        const std::size_t row_base = static_cast<std::size_t>(i) * row_stride;
-        const bool has_up = (i > 0);
+    for (int i = 0; i < n; i++) {
+        int row_base = i * row_stride;
 
-        for (int j = 0; j < m; ++j) {
+        for (int j = 0; j < m; j++) {
             if (i == 0 && j == 0) {
                 continue;
             }
-            const int cell_type = t_row[j];
+            int cell_type = types[i][j];
             if (cell_type == 0) {
                 continue; // Muralla: todos los estados permanecen en NEG_INF
             }
 
-            const std::size_t cell_base = row_base + static_cast<std::size_t>(j) * V;
-            const bool has_left = (j > 0);
+            int cell_base = row_base + j * v;
 
             if (cell_type == 1) {
-                const long long gain = v_row[j];
-                for (std::size_t lv = 0; lv < V; ++lv) {
+                long long gain = values[i][j];
+                for (int lv = 0; lv < v; lv++) {
                     long long best_prev = NEG_INF;
-                    std::uint8_t best_dir = 0;
+                    char best_dir = 0;
 
-                    if (has_left) {
-                        const long long cand = dp[cell_base - V + lv];
+                    if (j > 0) {
+                        long long cand = dp[cell_base - v + lv];
                         if (cand != NEG_INF) {
                             best_prev = cand;
                             best_dir = 1;
                         }
                     }
-                    if (has_up) {
-                        const long long cand = dp[cell_base - row_stride + lv];
+                    if (i > 0) {
+                        long long cand = dp[cell_base - row_stride + lv];
                         if (cand != NEG_INF && (best_dir == 0 || cand > best_prev)) {
                             best_prev = cand;
                             best_dir = 2;
@@ -128,21 +115,21 @@ PathResult solveDP(int n, int m, int v, int p,
                     }
                 }
             } else if (cell_type == -1) {
-                // Al pisar una mina: vidas decrecen en 1 (src_lv = lv + 1 -> lv), se ignora v_row[j]
-                for (std::size_t lv = 0; lv + 1 < V; ++lv) {
-                    const std::size_t src_lv = lv + 1;
+                // Al pisar una mina: vidas decrecen en 1 (src_lv = lv + 1 -> lv), se ignora values[i][j]
+                for (int lv = 0; lv + 1 < v; lv++) {
+                    int src_lv = lv + 1;
                     long long best_prev = NEG_INF;
-                    std::uint8_t best_dir = 0;
+                    char best_dir = 0;
 
-                    if (has_left) {
-                        const long long cand = dp[cell_base - V + src_lv];
+                    if (j > 0) {
+                        long long cand = dp[cell_base - v + src_lv];
                         if (cand != NEG_INF) {
                             best_prev = cand;
                             best_dir = 1;
                         }
                     }
-                    if (has_up) {
-                        const long long cand = dp[cell_base - row_stride + src_lv];
+                    if (i > 0) {
+                        long long cand = dp[cell_base - row_stride + src_lv];
                         if (cand != NEG_INF && (best_dir == 0 || cand > best_prev)) {
                             best_prev = cand;
                             best_dir = 2;
@@ -159,15 +146,13 @@ PathResult solveDP(int n, int m, int v, int p,
     }
 
     // Selección del mejor estado alcanzable en (n - 1, m - 1)
-    const std::size_t end_base = (static_cast<std::size_t>(n - 1) * M +
-                                  static_cast<std::size_t>(m - 1)) * V;
+    int end_base = ((n - 1) * m + (m - 1)) * v;
     bool found = false;
     long long best_score = NEG_INF;
-    std::size_t best_lv = 0;
+    int best_lv = 0;
 
-    for (std::size_t rem = V; rem > 0; --rem) {
-        const std::size_t lv = rem - 1;
-        const long long val = dp[end_base + lv];
+    for (int lv = v - 1; lv >= 0; lv--) {
+        long long val = dp[end_base + lv];
         if (val != NEG_INF && (!found || val > best_score)) {
             found = true;
             best_score = val;
@@ -180,32 +165,31 @@ PathResult solveDP(int n, int m, int v, int p,
     }
 
     // Reconstrucción del camino óptimo desde (n - 1, m - 1) hacia (0, 0)
-    const std::size_t path_len = static_cast<std::size_t>(n + m - 2);
-    std::string path(path_len, '\0');
+    int path_len = n + m - 2;
+    std::string path(path_len, ' ');
 
     int ci = n - 1;
     int cj = m - 1;
-    std::size_t cur_lv = best_lv;
+    int cur_lv = best_lv;
 
-    for (std::size_t step = path_len; step > 0; --step) {
-        const std::size_t cur_idx =
-            (static_cast<std::size_t>(ci) * M + static_cast<std::size_t>(cj)) * V + cur_lv;
-        const std::uint8_t dir = parent[cur_idx];
+    for (int step = path_len - 1; step >= 0; step--) {
+        int cur_idx = (ci * m + cj) * v + cur_lv;
+        char dir = parent[cur_idx];
 
-        if (types[static_cast<std::size_t>(ci)][static_cast<std::size_t>(cj)] == -1) {
-            ++cur_lv;
+        if (types[ci][cj] == -1) {
+            cur_lv++;
         }
 
         if (dir == 1) {
-            path[step - 1] = 'R';
-            --cj;
+            path[step] = 'R';
+            cj--;
         } else if (dir == 2) {
-            path[step - 1] = 'D';
-            --ci;
+            path[step] = 'D';
+            ci--;
         } else {
             return {false, 0, "", 0};
         }
     }
 
-    return {true, best_score, std::move(path), static_cast<int>(best_lv + 1)};
+    return {true, best_score, path, best_lv + 1};
 }

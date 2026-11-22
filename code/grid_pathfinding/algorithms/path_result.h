@@ -12,20 +12,15 @@
  *     Departamento de Informática, Universidad Técnica Federico Santa María.
  *
  * Decisiones de diseño:
- *   - Se mantiene exactamente la guarda de inclusión PATH_RESULT_H, la
- *     estructura PathResult y las tres firmas de resolución establecidas en la
- *     plantilla oficial de grid_pathfinding.cpp para garantizar compatibilidad
- *     directa con pruebas automatizadas y evaluación externa.
- *   - Se expone la función auxiliar getLastBruteForceStackBytes() para reportar
- *     la memoria de pila máxima utilizada durante la recursión DFS de Fuerza
- *     Bruta sin alterar la firma pública de solveBruteForce().
+ *   - Se mantiene la guarda de inclusión PATH_RESULT_H, la estructura
+ *     PathResult y las tres firmas de resolución (Fuerza Bruta, Programación
+ *     Dinámica y Greedy) con tipos estándar de la biblioteca de C++.
  * ============================================================================
  */
 
 #ifndef PATH_RESULT_H
 #define PATH_RESULT_H
 
-#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -47,8 +42,5 @@ PathResult solveDP(int n, int m, int v, int p,
 PathResult solveGreedy(int n, int m, int v, int p,
                        const std::vector<std::vector<int>>& types,
                        const std::vector<std::vector<long long>>& values);
-
-// Telemetría auxiliar de pila de recursión para Fuerza Bruta (bytes en la profundidad máxima)
-std::size_t getLastBruteForceStackBytes();
 
 #endif // PATH_RESULT_H

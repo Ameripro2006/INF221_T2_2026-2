@@ -1,5 +1,1 @@
-\begin{mdframed}
-    \textbf{La extensión máxima para esta sección es un párrafo breve (máximo 1/4 de página).}
-\end{mdframed}
-
-Escriba una conclusión breve que interprete los resultados más importantes. Cada afirmación debe estar respaldada por los datos presentados.
+DP es exacto y su tiempo crece de forma moderada (63,96 ms con $N=1024$), pero requiere una tabla de $N\cdot M$ (hasta 55 MB de incremento medido). Greedy es unas 570 veces más rápido en $N=1024$ (0,112 ms) y no usa memoria medible, pero falla en el 13,2\% de las instancias (hasta 33\% en grillas con murallas) y su puntaje queda por debajo del óptimo, con brecha creciente con el tamaño y el dominio. La fuerza bruta solo es viable hasta $N+M\le32$ (2,87 s promedio con $N=16$) y sirvió para validar a DP. Por tanto, DP es preferible cuando se requiere optimalidad y garantía de solución; greedy solo conviene en grillas grandes y sin muros, donde la velocidad pesa más que perder puntaje.

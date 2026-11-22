@@ -1,5 +1,3 @@
-\begin{mdframed}
-    \textbf{La extensión máxima para esta sección es de media página.}
-\end{mdframed}
+Los experimentos se ejecutaron en un procesador estándar con RAM genérica, bajo Linux/WSL y compilando con \texttt{g++ -std=c++17 -Wall -O2} (los datos exactos de \texttt{lscpu} y \texttt{free -h} se completarán después). El dataset consta de 288 instancias generadas aleatoriamente con semilla 2026 (6 tamaños de $N$, 4 tipos de grilla, 2 dominios D10 y D1000 y 3 muestras, con $M\in\{N,2N\}$). Cada combinación instancia--algoritmo se ejecuta 3 veces y se promedia el tiempo; la fuerza bruta solo corre cuando $N+M\le 32$ (120 corridas).
 
-Especifique el hardware y software utilizado para realizar los experimentos (por ejemplo, procesador, memoria RAM, sistema operativo, compilador y versión). Incluya una mención breve de los datasets utilizados, los cuales son los descritos en el enunciado de la tarea.
+\textbf{Advertencias.} La memoria se mide como la diferencia de \texttt{ru\_maxrss} antes y después de las repeticiones; en grillas pequeñas puede ser 0 porque el incremento no supera la paginación del SO (4 KB), por lo que solo es representativa en grillas grandes. Además, al no haber \textit{warm-up}, las 3 repeticiones con $N=4$ pueden verse afectadas por el caché.
