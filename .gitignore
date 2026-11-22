@@ -1,0 +1,31 @@
+# Binarios y objetos compilados
+code/grid_pathfinding/grid_pathfinding
+*.o
+*.exe
+
+# Entornos virtuales y bytecode de Python
+.venv/
+__pycache__/
+*.pyc
+
+# Artefactos temporales de compilacion LaTeX / Biber
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.out
+*.run.xml
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Archivos comprimidos y basura del sistema operativo
+*.zip
+.DS_Store
+Thumbs.db
+
+# Grillas de entrada grandes (versionar solo N=4; regenerables con grid_generator.py --seed 2026)
+code/grid_pathfinding/data/grid_input/*.txt
+!code/grid_pathfinding/data/grid_input/4_*.txt
